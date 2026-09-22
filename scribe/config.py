@@ -6,6 +6,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .guard import parse_allowed_hosts
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PORT = 5185
 
@@ -25,6 +27,7 @@ class Config:
     transcriber: str = "auto"  # auto | whisper | fake
     fake_fixture: str = ""  # WAV (or "mic.wav,system.wav") streamed by the fake backend
     fake_speed: float = 1.0  # 0 = as fast as possible
+    allowed_hosts: tuple[str, ...] = ()  # extra Host values (exact or *.suffix) besides localhost
     data_dir_configured: bool = False
 
     @property
@@ -68,5 +71,6 @@ class Config:
             fake_fixture=_env("SCRIBE_FAKE_FIXTURE"),
             fake_speed=speed,
             models_dir_override=Path(_env("SCRIBE_MODELS_DIR")).expanduser() if _env("SCRIBE_MODELS_DIR") else None,
+            allowed_hosts=parse_allowed_hosts(_env("SCRIBE_ALLOWED_HOSTS")),
             data_dir_configured=bool(raw_dir),
         )

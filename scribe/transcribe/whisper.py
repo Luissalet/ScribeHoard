@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
+import sysconfig
 import threading
 import time
 from pathlib import Path
@@ -17,8 +20,48 @@ REPO = "Systran/faster-whisper-{size}"
 DISTIL_REPO = "Systran/distil-whisper-{size}"
 
 
+_DLL_DIRS_ADDED = False
+
+
+def add_cuda_dll_dirs() -> list[str]:
+    """Windows: CTranslate2 loads cuBLAS/cuDNN lazily at the first inference and
+    finds them only through the DLL search path. The pip wheels
+    (`nvidia-cublas-cu12`, `nvidia-cudnn-cu12`, in requirements-windows.txt) put
+    them under site-packages/nvidia/<lib>/bin, which is NOT on that path, so the
+    model loads fine and then fails with "cublas64_12.dll is not found" — seen on
+    the first real recording. Registering those folders once fixes it."""
+    global _DLL_DIRS_ADDED
+    if _DLL_DIRS_ADDED or sys.platform != "win32":
+        return []
+    _DLL_DIRS_ADDED = True
+    found: list[str] = []
+    for site in sysconfig.get_paths().values():
+        base = Path(site) / "nvidia"
+        if not base.is_dir():
+            continue
+        for lib in sorted(base.iterdir()):
+            bin_dir = lib / "bin"
+            if bin_dir.is_dir() and str(bin_dir) not in found:
+                found.append(str(bin_dir))
+    for folder in found:
+        try:
+            os.add_dll_directory(folder)
+        except (AttributeError, OSError):
+            pass
+    if found:
+        os.environ["PATH"] = os.pathsep.join(found + [os.environ.get("PATH", "")])
+        log.info("cuda dll dirs: %s", found)
+    return found
+
+
+def _looks_like_cuda_error(error: BaseException) -> bool:
+    text = str(error).lower()
+    return any(k in text for k in ("cublas", "cudnn", "cuda", "cudart", "device-side"))
+
+
 def cuda_available() -> bool:
     try:
+        add_cuda_dll_dirs()
         import ctranslate2  # type: ignore
 
         return ctranslate2.get_cuda_device_count() > 0
@@ -59,6 +102,7 @@ class WhisperTranscriber(Transcriber):
         self.state = "idle"  # idle | downloading | loading | ready | error
         self.error = ""
         self.last_ms: int | None = None
+        self.cpu_fallback_reason = ""
         self.lock = threading.RLock()
 
     # ---------- configuration ----------
@@ -79,6 +123,7 @@ class WhisperTranscriber(Transcriber):
             key = self._key()
             if self.model is not None and self.loaded_key == key:
                 return
+            add_cuda_dll_dirs()
             from faster_whisper import WhisperModel  # heavy import, kept lazy
 
             size, device, compute = key
@@ -111,15 +156,21 @@ class WhisperTranscriber(Transcriber):
             return []
         started = time.time()
         with self.lock:
-            raw, _info = self.model.transcribe(
-                audio,
-                language=None if language in (None, "", "auto") else language,
-                beam_size=2,
-                vad_filter=True,
-                vad_parameters={"min_silence_duration_ms": 500},
-                word_timestamps=True,
-                condition_on_previous_text=False,
-            )
+            try:
+                raw, _info = self._run(audio, language)
+            except Exception as error:
+                # A CUDA library missing at inference time (not at load time) is
+                # the failure seen on Windows without the cuBLAS/cuDNN wheels.
+                # Do not leave the session stuck: reload on CPU and carry on.
+                if self.loaded_key and self.loaded_key[1] == "cuda" and _looks_like_cuda_error(error):
+                    log.warning("cuda inference failed (%s); reloading on cpu", error)
+                    self.cpu_fallback_reason = str(error)
+                    self.device_setting = "cpu"
+                    self.model, self.loaded_key = None, None
+                    self.ensure_loaded()
+                    raw, _info = self._run(audio, language)
+                else:
+                    raise
             segments = [
                 Segment(
                     round(float(s.start), 2),
@@ -134,6 +185,17 @@ class WhisperTranscriber(Transcriber):
         self.last_ms = int((time.time() - started) * 1000)
         return segments
 
+    def _run(self, audio: np.ndarray, language: str | None):
+        return self.model.transcribe(
+            audio,
+            language=None if language in (None, "", "auto") else language,
+            beam_size=2,
+            vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 500},
+            word_timestamps=True,
+            condition_on_previous_text=False,
+        )
+
     def info(self) -> dict:
         size, device, compute = self._key()
         return {
@@ -146,6 +208,7 @@ class WhisperTranscriber(Transcriber):
             "download": "ready" if model_present(self.models_dir, size) else ("downloading" if self.state == "downloading" else "missing"),
             "state": self.state,
             "error": self.error,
+            "cpu_fallback_reason": self.cpu_fallback_reason,
             "last_ms": self.last_ms,
             "models_dir": str(self.models_dir),
         }

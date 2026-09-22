@@ -47,8 +47,12 @@ reconocimiento de voces ni adivinanzas: el canal dice quién habló.
   reproduce ficheros WAV.
 - Python 3.11+ (3.13 funciona). Node 22 solo para compilar el cliente.
 - La CPU basta (`int8`). Con GPU NVIDIA, `dispositivo: auto` elige CUDA
-  cuando ctranslate2 la ve (bibliotecas CUDA 12 + cuDNN 9); si cargar en CUDA
-  falla, la aplicación vuelve a CPU y lo indica.
+  cuando ctranslate2 la ve. Las bibliotecas CUDA 12 + cuDNN 9 vienen de los
+  paquetes `nvidia-cublas-cu12` / `nvidia-cudnn-cu12` de
+  `requirements-windows.txt` (la app añade sus carpetas `bin` a la ruta de
+  búsqueda de DLL por sí sola). Si CUDA falla al cargar o en la primera
+  transcripción, la app pasa a CPU, termina la sesión y explica por qué en
+  Ajustes.
 - `ffmpeg` en el PATH es opcional.
 
 ## Instalación y arranque (Windows)
@@ -67,6 +71,10 @@ venv\Scripts\python scripts\launch.py
 5185 y abre el navegador. `python -m scribe` lo arranca sin abrir nada. Los
 datos (base SQLite, audio de las sesiones, modelos, token MCP) viven en
 `<repo>\data` o en `SCRIBE_DATA_DIR`.
+
+### Acceso desde el móvil (a través de un túnel)
+
+El servidor escucha en 127.0.0.1 y solo responde a peticiones cuyo `Host` sea `localhost`, `127.0.0.1` o `[::1]`. Para entrar desde el móvil a través de un túnel que ponga la aplicación delante (una red privada, un proxy inverso), indicad los nombres de host adicionales en `SCRIBE_ALLOWED_HOSTS`, separados por comas, exactos o `*.sufijo`: `SCRIBE_ALLOWED_HOSTS=mi-pc.example,*.ts.net`. El puerto y las mayúsculas no importan, y el `Origin` de las llamadas a la API también tiene que corresponder a uno de esos hosts (con cualquier esquema o puerto). Las peticiones *fetch* desde otras webs se siguen rechazando; abrir la aplicación desde otra página (un enlace, un bookmarklet, el menú de compartir) es una navegación normal y funciona.
 
 La primera transcripción descarga el modelo (`small` por defecto, ~460 MB;
 `tiny` son ~75 MB) en `data\models`. Podéis lanzarla desde *Ajustes →

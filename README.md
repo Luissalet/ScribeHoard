@@ -45,8 +45,11 @@ recognition, no guessing — the channel tells you who spoke.
   anywhere and is tested with a fake backend that streams WAV fixtures.
 - Python 3.11+ (3.13 works). Node 22 only to build the client.
 - CPU works out of the box (`int8`). With an NVIDIA GPU, `device: auto`
-  picks CUDA when ctranslate2 can see it (CUDA 12 + cuDNN 9 runtime
-  libraries); if loading on CUDA fails the app falls back to CPU and says so.
+  picks CUDA when ctranslate2 can see it. The CUDA 12 + cuDNN 9 runtime
+  libraries come from the `nvidia-cublas-cu12` / `nvidia-cudnn-cu12` wheels in
+  `requirements-windows.txt` (the app puts their `bin` folders on the DLL search
+  path itself). If CUDA fails at load or at the first inference, the app
+  falls back to CPU, finishes the session, and says why in Ajustes.
 - `ffmpeg` on PATH is optional (imports of compressed formats are faster and
   more robust with it).
 
@@ -87,12 +90,17 @@ Options: `--seconds`, `--model tiny`, `--device cpu|cuda`, `--transcriber fake`,
 | --- | --- |
 | `SCRIBE_PORT` / `PORT` | preferred port (default 5185); `PORT_STRICT=1` pins it |
 | `SCRIBE_DATA_DIR` | data folder (default `<repo>/data`) |
+| `SCRIBE_ALLOWED_HOSTS` | Extra host names accepted behind a tunnel (see below). |
 | `SCRIBE_MODELS_DIR` | share downloaded models between data folders |
 | `SCRIBE_AUDIO` | `auto` (wasapi on Windows, else sounddevice), `wasapi`, `sounddevice`, `fake`, `none` |
 | `SCRIBE_TRANSCRIBER` | `auto` (faster-whisper), `fake` |
 | `SCRIBE_FAKE_FIXTURE` | WAV (or `mic.wav,system.wav`) streamed by the fake backend |
 | `SCRIBE_FAKE_SPEED` | playback speed of the fake backend (`0` = as fast as possible) |
 | `SCRIBE_URL`, `SCRIBE_TOKEN_FILE`, `SCRIBE_TOKEN` | used by `mcp_server.py` to reach the app |
+
+### Access from your phone (behind a tunnel)
+
+The server binds 127.0.0.1 and only answers requests whose `Host` is `localhost`, `127.0.0.1` or `[::1]`. To reach it from your phone through a tunnel that fronts the app (a private mesh network, a reverse proxy), list the extra host names in `SCRIBE_ALLOWED_HOSTS`, comma-separated, exact names or `*.suffix`: `SCRIBE_ALLOWED_HOSTS=my-pc.example,*.ts.net`. Port and letter case are ignored, and the `Origin` of API calls must resolve to one of those hosts too (any scheme or port). Cross-site *fetches* are still refused; opening the app from another page (a link, a bookmarklet, the share sheet) is a normal navigation and works.
 
 ## How recording works
 

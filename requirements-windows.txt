@@ -2,3 +2,8 @@
 # soundcard provides WASAPI loopback (system audio) + microphone as two independent tracks.
 -r requirements.txt
 soundcard>=0.4.3
+# CUDA runtime libraries CTranslate2 needs for GPU transcription (loaded lazily at the
+# first inference; without them the model loads and then fails with "cublas64_12.dll
+# is not found"). The app registers their bin folders on the DLL search path itself.
+nvidia-cublas-cu12
+nvidia-cudnn-cu12
