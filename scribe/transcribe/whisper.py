@@ -14,6 +14,7 @@ import numpy as np
 
 from ..audio.wav import to_float32
 from .base import Segment, Transcriber, Word
+from .filter import COMPRESSION_MAX, LOGPROB_MIN, NO_SPEECH_MAX
 
 log = logging.getLogger("scribe.whisper")
 REPO = "Systran/faster-whisper-{size}"
@@ -178,6 +179,9 @@ class WhisperTranscriber(Transcriber):
                     s.text.strip(),
                     round(float(np.exp(s.avg_logprob)) if s.avg_logprob is not None else 0.0, 3),
                     [Word(round(float(w.start), 2), round(float(w.end), 2), w.word, round(float(w.probability), 3)) for w in (s.words or [])],
+                    no_speech_prob=round(float(s.no_speech_prob), 3) if s.no_speech_prob is not None else None,
+                    avg_logprob=round(float(s.avg_logprob), 3) if s.avg_logprob is not None else None,
+                    compression_ratio=round(float(s.compression_ratio), 3) if s.compression_ratio is not None else None,
                 )
                 for s in raw
                 if s.text.strip()
@@ -194,6 +198,10 @@ class WhisperTranscriber(Transcriber):
             vad_parameters={"min_silence_duration_ms": 500},
             word_timestamps=True,
             condition_on_previous_text=False,
+            # explicit decoder guards; filter.py applies the same limits again per segment
+            no_speech_threshold=NO_SPEECH_MAX,
+            log_prob_threshold=LOGPROB_MIN,
+            compression_ratio_threshold=COMPRESSION_MAX,
         )
 
     def info(self) -> dict:

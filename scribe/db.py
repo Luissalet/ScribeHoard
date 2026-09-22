@@ -48,6 +48,10 @@ MIGRATIONS: list[str] = [
     );
     CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     """,
+    # 2: per-session transcription statistics (silence gate, dropped hallucinations)
+    """
+    ALTER TABLE sessions ADD COLUMN stats TEXT NOT NULL DEFAULT '{}';
+    """,
 ]
 
 

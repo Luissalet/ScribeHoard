@@ -75,6 +75,10 @@ export default function Sesion() {
         <span>· {session.sources.mic && session.sources.system ? "micrófono + sistema" : session.sources.mic ? "micrófono" : "sistema"}</span>
         <span>· {session.language === "auto" ? "idioma detectado" : session.language}</span>
         {session.error && <span className="chip chip-danger">{session.error}</span>}
+        {session.stats && session.stats.no_speech && <span className="chip chip-warn">sin voz detectada</span>}
+        {session.stats && session.stats.final && (session.stats.final.skipped_silent > 0 || session.stats.final.dropped > 0) && (
+          <span className="help">· {session.stats.final.skipped_silent} fragmentos en silencio · {session.stats.final.dropped} líneas descartadas como ruido</span>
+        )}
       </div>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="grid gap-4">
@@ -85,7 +89,11 @@ export default function Sesion() {
               <h2 className="text-[17px] font-semibold">Transcripción</h2>
               <span className="help">{segments.length} líneas · pulsa una para saltar</span>
             </div>
-            <Transcript segments={segments} currentTime={session.status === "done" ? time : null} onSeek={session.status === "done" ? (t) => setSeek({ t }) : undefined} follow={active} />
+            {session.status === "done" && !segments.length ? (
+              <p className="help px-2 py-6 text-center">Sin voz detectada: la grabación solo contiene silencio o ruido, así que no hay texto que mostrar.</p>
+            ) : (
+              <Transcript segments={segments} currentTime={session.status === "done" ? time : null} onSeek={session.status === "done" ? (t) => setSeek({ t }) : undefined} follow={active} />
+            )}
           </section>
         </div>
         <aside className="grid content-start gap-4">

@@ -39,7 +39,7 @@ class FakeTranscriber(Transcriber):
                 break
             text = self.phrases[self._cursor % len(self.phrases)]
             self._cursor += 1
-            segments.append(Segment(round(start, 2), round(end, 2), text, 0.9))
+            segments.append(Segment(round(start, 2), round(end, 2), text, 0.9, no_speech_prob=0.05, avg_logprob=-0.3, compression_ratio=1.2))
             start = end
         return segments
 

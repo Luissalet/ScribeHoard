@@ -106,6 +106,7 @@ def _session_brief(svc: Services, s: dict) -> dict:
         "sources": s["sources"],
         "tags": s["tags"],
         "first_line": svc.sessions.first_line(s["id"]),
+        "no_speech": bool(s.get("stats", {}).get("no_speech")),
     }
 
 
@@ -152,7 +153,8 @@ def run_transcript(svc: Services, a: TranscriptArgs):
         "notes": session["notes"],
         "segments": lines,
         "next_from_s": next_from,
-        "note": "Speaker labels come from the audio channel (yo = microphone, otros = system audio). Live segments are provisional.",
+        "note": ("No speech was detected in this session (silence or noise only); there is nothing to quote. " if session.get("stats", {}).get("no_speech") else "")
+        + "Speaker labels come from the audio channel (yo = microphone, otros = system audio). Live segments are provisional; segments with hallucination signals were dropped.",
     }
 
 

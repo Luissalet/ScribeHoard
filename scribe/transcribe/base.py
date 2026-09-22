@@ -22,6 +22,10 @@ class Segment:
     text: str
     confidence: float = 0.0
     words: list[Word] = field(default_factory=list)
+    # decoder quality signals (faster-whisper exposes them per segment); None when the backend has none
+    no_speech_prob: float | None = None
+    avg_logprob: float | None = None
+    compression_ratio: float | None = None
 
 
 class Transcriber:

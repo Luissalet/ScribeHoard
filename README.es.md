@@ -109,6 +109,14 @@ Opciones: `--seconds`, `--model tiny`, `--device cpu|cuda`, `--transcriber fake`
    la sesión como «Lista» (o «Error», con botón *Reintentar*).
 5. Las sesiones que un cierre inesperado dejó a medias se rematan con el
    audio que hubiera al volver a arrancar.
+6. **Silencio y alucinaciones**: el audio sin voz (energía RMS/pico y
+   proporción de tramas con voz) no se envía nunca al modelo; se descartan los
+   segmentos con `no_speech_prob > 0.6`, `avg_logprob < -1.0` o
+   `compression_ratio > 2.4`, y las frases inventadas típicas de Whisper
+   («Subtítulos realizados por la comunidad de Amara.org», «Gracias por ver el
+   vídeo», «Thank you for watching»…). Los contadores quedan en `stats` de la
+   sesión; una sesión sin texto termina «Lista» con la nota «(sin voz
+   detectada)».
 
 ## MCP
 

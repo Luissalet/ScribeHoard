@@ -17,6 +17,7 @@ from .merge import Labelled, label_for
 from .settings import SettingsStore
 from .store import SessionStore
 from .transcribe.base import Transcriber
+from .transcribe.filter import FilterStats, guarded_transcribe
 from .vad import Chunk, Chunker
 from .worker import PRIORITY_LIVE, TranscriptionWorker
 
@@ -61,6 +62,8 @@ class ActiveRecording:
     thread: threading.Thread | None = None
     chunks_sent: int = 0
     live_segments: int = 0
+    sensitivity: int = 2
+    stats: FilterStats = field(default_factory=FilterStats)
 
     @property
     def elapsed(self) -> float:
@@ -96,7 +99,7 @@ class Recorder:
                 name: TrackWriter(folder / f"{name}.wav", Chunker(sensitivity=s.vad_sensitivity, max_chunk_s=float(s.live_chunk_max_s)), t0)
                 for name in stream.tracks
             }
-            rec = ActiveRecording(session["id"], stream, tracks, language, started_mono=t0)
+            rec = ActiveRecording(session["id"], stream, tracks, language, started_mono=t0, sensitivity=s.vad_sensitivity)
             rec.thread = threading.Thread(target=self._capture_loop, args=(rec,), name="scribe-capture", daemon=True)
             self.current = rec
             rec.thread.start()
@@ -118,7 +121,7 @@ class Recorder:
             rec.thread.join(timeout=5)
         duration = rec.elapsed
         audio = self._single_audio(rec)
-        session = self.store.update(rec.session_id, status="processing", ended_at=time.time(), duration_s=duration, audio_path=audio)
+        session = self.store.update(rec.session_id, status="processing", ended_at=time.time(), duration_s=duration, audio_path=audio, stats={"live": rec.stats.as_dict()})
         self.bus.publish(rec.session_id, "status", {"status": "processing", "duration_s": duration})
         if self.on_stopped:
             self.on_stopped(rec.session_id)
@@ -162,7 +165,7 @@ class Recorder:
         label = label_for(track, len(rec.tracks))
 
         def job():
-            segments = self.transcriber.transcribe(chunk.samples, rec.language)
+            segments = guarded_transcribe(self.transcriber, chunk.samples, rec.language, rec.sensitivity, rec.stats)
             labelled = [Labelled(round(chunk.start_s + s.start, 2), round(chunk.start_s + s.end, 2), label, s.text.strip(), s.confidence) for s in segments if s.text.strip()]
             if not labelled:
                 return
@@ -188,4 +191,6 @@ class Recorder:
             "levels": rec.levels,
             "chunks_sent": rec.chunks_sent,
             "live_segments": rec.live_segments,
+            "skipped_silent": rec.stats.skipped_silent,
+            "dropped": rec.stats.dropped,
         }

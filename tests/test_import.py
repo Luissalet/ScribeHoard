@@ -2,13 +2,14 @@ import shutil
 
 import numpy as np
 
+from scribe.audio.fake import synth_speechlike
 from scribe.audio.wav import SAMPLE_RATE, write_wav
 from scribe.importer import convert_to_wav, ffmpeg_path
 
 
 def test_import_wav_creates_transcribed_session(client, tmp_path):
     source = tmp_path / "nota.wav"
-    write_wav(source, np.zeros(44100 * 3, dtype=np.int16), 44100)  # 44.1 kHz gets resampled
+    write_wav(source, synth_speechlike(3.0, sample_rate=44100), 44100)  # 44.1 kHz gets resampled
     with source.open("rb") as handle:
         response = client.post("/api/import", files={"file": ("Nota de voz.wav", handle, "audio/wav")}, data={"title": "Importada", "kind": "note"})
     assert response.status_code == 201, response.text

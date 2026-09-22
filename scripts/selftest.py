@@ -69,7 +69,7 @@ def main() -> int:
 
     bus, worker = EventBus(), TranscriptionWorker()
     worker.start()
-    pipeline = Pipeline(store, transcriber, worker, bus)
+    pipeline = Pipeline(store, transcriber, worker, bus, settings)
     recorder = Recorder(backend, settings, store, transcriber, worker, bus)
     recorder.on_stopped = pipeline.enqueue_final
 

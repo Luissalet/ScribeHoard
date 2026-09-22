@@ -14,6 +14,7 @@ from .db import Database
 from .merge import Labelled
 
 KINDS = ("meeting", "interview", "note", "other")
+NO_SPEECH_NOTE = "(sin voz detectada)"
 STATUSES = ("recording", "processing", "done", "failed")
 
 
@@ -58,6 +59,7 @@ def session_row(row) -> dict:
         "tags": json.loads(row["tags"] or "[]"),
         "error": row["error"],
         "origin": row["origin"],
+        "stats": json.loads(row["stats"] or "{}"),
     }
 
 
@@ -106,8 +108,10 @@ class SessionStore:
         return session_row(row) if row else None
 
     def update(self, session_id: str, **fields) -> dict | None:
-        allowed = {"title", "kind", "status", "ended_at", "audio_path", "duration_s", "notes", "tags", "error", "language"}
+        allowed = {"title", "kind", "status", "ended_at", "audio_path", "duration_s", "notes", "tags", "error", "language", "stats"}
         data = {k: v for k, v in fields.items() if k in allowed and v is not None}
+        if "stats" in data and not isinstance(data["stats"], str):
+            data["stats"] = json.dumps(data["stats"])
         if "tags" in data:
             data["tags"] = json.dumps(normalize_tags(data["tags"]))
         if "title" in data:
@@ -169,9 +173,13 @@ class SessionStore:
             return self.db.conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
 
     def first_line(self, session_id: str) -> str:
+        """First transcribed line, or the written note when a finished session has no speech."""
         with self.db.lock:
             row = self.db.conn.execute("SELECT text FROM segments WHERE session_id = ? ORDER BY start_s LIMIT 1", (session_id,)).fetchone()
-        return row["text"][:160] if row else ""
+            status = self.db.conn.execute("SELECT status FROM sessions WHERE id = ?", (session_id,)).fetchone()
+        if row:
+            return row["text"][:160]
+        return NO_SPEECH_NOTE if status and status["status"] == "done" else ""
 
     def tags(self) -> list[dict]:
         with self.db.lock:

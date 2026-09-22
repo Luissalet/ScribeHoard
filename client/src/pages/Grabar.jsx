@@ -30,7 +30,7 @@ function LiveView({ rec, onStop }) {
           {rec.tracks.includes("mic") && <Meter label="Yo (micro)" value={rec.levels.mic} />}
           {rec.tracks.includes("system") && <Meter label="Otros (sist.)" value={rec.levels.system} />}
         </div>
-        <div className="help mt-3">{rec.chunks_sent} fragmentos enviados · {rec.live_segments} líneas en directo</div>
+        <div className="help mt-3">{rec.chunks_sent} fragmentos enviados · {rec.live_segments} líneas en directo{rec.skipped_silent ? ` · ${rec.skipped_silent} en silencio` : ""}{rec.dropped ? ` · ${rec.dropped} descartadas` : ""}</div>
         <button type="button" className="btn-record stop mt-5 w-full" onClick={onStop}><span className="dot" aria-hidden="true" />Parar grabación</button>
       </section>
       <section className="panel-white">

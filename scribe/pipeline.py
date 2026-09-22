@@ -12,8 +12,10 @@ from .audio import TRACK_MIC, TRACK_SYSTEM
 from .audio.wav import SAMPLE_RATE, mix_tracks, read_wav, write_wav
 from .events import EventBus
 from .merge import coalesce, merge_tracks
+from .settings import SettingsStore
 from .store import SessionStore
 from .transcribe.base import Transcriber
+from .transcribe.filter import FilterStats, guarded_transcribe
 from .worker import PRIORITY_FINAL, TranscriptionWorker
 
 log = logging.getLogger("scribe.pipeline")
@@ -35,8 +37,12 @@ def load_tracks(folder: Path) -> dict[str, np.ndarray]:
 
 
 class Pipeline:
-    def __init__(self, store: SessionStore, transcriber: Transcriber, worker: TranscriptionWorker, bus: EventBus):
+    def __init__(self, store: SessionStore, transcriber: Transcriber, worker: TranscriptionWorker, bus: EventBus, settings: SettingsStore | None = None):
         self.store, self.transcriber, self.worker, self.bus = store, transcriber, worker, bus
+        self.settings = settings
+
+    def _sensitivity(self) -> int:
+        return self.settings.get().vad_sensitivity if self.settings else 2
 
     def enqueue_final(self, session_id: str) -> None:
         self.store.update(session_id, status="processing", error="")
@@ -52,7 +58,9 @@ class Pipeline:
             tracks = load_tracks(folder)
             if not tracks:
                 raise FileNotFoundError("No audio tracks found for this session.")
-            per_track = {name: self.transcriber.transcribe(samples, session["language"]) for name, samples in tracks.items()}
+            stats = FilterStats()
+            sensitivity = self._sensitivity()
+            per_track = {name: guarded_transcribe(self.transcriber, samples, session["language"], sensitivity, stats) for name, samples in tracks.items()}
             merged = coalesce(merge_tracks(per_track))
             duration = max(len(s) for s in tracks.values()) / SAMPLE_RATE
             audio_path = folder / "audio.wav"
@@ -61,9 +69,10 @@ class Pipeline:
             elif "audio" not in tracks:
                 audio_path = folder / f"{next(iter(tracks))}.wav"
             stored = self.store.replace_segments(session_id, merged)
-            updated = self.store.update(session_id, status="done", duration_s=round(duration, 2), audio_path=str(audio_path), error="", ended_at=session["ended_at"] or time.time())
-            log.info("final pass %s: %d segments in %.1fs", session_id, len(stored), time.time() - started)
-            self.bus.publish(session_id, "done", {"status": "done", "segments": len(stored), "duration_s": round(duration, 2)})
+            all_stats = {**session.get("stats", {}), "final": stats.as_dict(), "no_speech": not stored}
+            updated = self.store.update(session_id, status="done", duration_s=round(duration, 2), audio_path=str(audio_path), error="", ended_at=session["ended_at"] or time.time(), stats=all_stats)
+            log.info("final pass %s: %d segments in %.1fs (silent chunks %d, dropped %d)", session_id, len(stored), time.time() - started, stats.skipped_silent, stats.dropped)
+            self.bus.publish(session_id, "done", {"status": "done", "segments": len(stored), "duration_s": round(duration, 2), "no_speech": not stored})
             return updated
         except Exception as error:
             log.exception("final pass failed for %s", session_id)

@@ -122,6 +122,15 @@ The server binds 127.0.0.1 and only answers requests whose `Host` is `localhost`
    `done` (or `failed` with the error; *Reintentar* re-queues it).
 5. Sessions left in `recording` or `processing` by a crash are finalised
    from whatever audio was written when the app starts again.
+6. **Silence and hallucinations** (`scribe/transcribe/filter.py`, shared by
+   the live chunks and the final pass): audio without speech (RMS/peak energy
+   and VAD voiced ratio) is never sent to the model; segments with
+   `no_speech_prob > 0.6`, `avg_logprob < -1.0` or `compression_ratio > 2.4`
+   are dropped, as are well-known Whisper hallucinations ("Subtítulos
+   realizados por la comunidad de Amara.org", "Gracias por ver el vídeo",
+   "Thank you for watching"…). Counters land in the session's `stats`; a
+   session whose final pass yields no text is `done` with the note
+   "(sin voz detectada)" in the UI and in `scribe_sessions`.
 
 ## API
 

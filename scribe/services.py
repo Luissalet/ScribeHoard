@@ -54,7 +54,7 @@ class Services:
         self.notes += notes
         for note in self.notes:
             log.info("backend: %s", note)
-        self.pipeline = Pipeline(self.sessions, self.transcriber, self.worker, self.bus)
+        self.pipeline = Pipeline(self.sessions, self.transcriber, self.worker, self.bus, self.settings)
         self.importer = Importer(self.sessions, self.pipeline)
         self.recorder = Recorder(self.backend, self.settings, self.sessions, self.transcriber, self.worker, self.bus)
         self.recorder.on_stopped = self.pipeline.enqueue_final

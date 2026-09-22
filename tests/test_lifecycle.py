@@ -52,6 +52,7 @@ def test_only_one_recording_and_stop_errors(services):
         raise AssertionError("wrong id must be refused")
     except LookupError:
         pass
+    wait_for(lambda: svc.recorder.current and svc.recorder.current.elapsed >= 15.9)
     svc.recorder.stop(session["id"])
     assert svc.worker.wait_idle(30)
     final = svc.sessions.get(session["id"])
