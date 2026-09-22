@@ -1,0 +1,4 @@
+# Windows extras: install after requirements.txt (venv\Scripts\pip install -r requirements-windows.txt).
+# soundcard provides WASAPI loopback (system audio) + microphone as two independent tracks.
+-r requirements.txt
+soundcard>=0.4.3

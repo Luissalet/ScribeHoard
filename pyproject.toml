@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scribe-hoard"
+version = "0.1.0"
+description = "Private, local recorder for meetings, interviews and voice notes with two-track capture, local transcription (faster-whisper) and full-text search, exposed to assistants through MCP."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Luissalet" }]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "pydantic>=2.7",
+  "httpx>=0.27",
+  "mcp>=1.10,<2",
+  "numpy>=1.26",
+  "python-multipart>=0.0.9",
+  "faster-whisper>=1.1",
+  "webrtcvad-wheels>=2.0.14",
+  "sounddevice>=0.5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+windows = ["soundcard>=0.4.3; sys_platform == 'win32'"]
+
+[project.scripts]
+scribe-hoard = "scribe.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["scribe*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["whisper: runs the real faster-whisper tiny model on CPU (needs the model files or network)"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore:Using `httpx` with `starlette.testclient`"]

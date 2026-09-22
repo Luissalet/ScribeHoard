@@ -1,0 +1,21 @@
+# Pinned to the versions verified in the build environment (Python 3.11; 3.11+ required).
+# CPU works out of the box. For the NVIDIA GPU, faster-whisper/ctranslate2 use CUDA 12 + cuDNN 9:
+# install the NVIDIA runtime libraries once (`pip install nvidia-cublas-cu12 nvidia-cudnn-cu12`) or
+# have CUDA/cuDNN on PATH; the app falls back to CPU automatically when CUDA is not usable.
+fastapi==0.141.1
+uvicorn==0.53.0
+pydantic==2.13.5
+starlette==1.6.0
+httpx==0.28.1
+mcp==1.30.0
+numpy==2.4.6
+python-multipart==0.0.32
+faster-whisper==1.2.1
+ctranslate2==4.8.2
+tokenizers==0.23.2
+huggingface-hub==1.32.0
+onnxruntime==1.30.0
+av==18.1.0
+webrtcvad-wheels==2.0.14
+sounddevice==0.5.6
+pytest==9.1.1
