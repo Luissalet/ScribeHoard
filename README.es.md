@@ -76,6 +76,8 @@ datos (base SQLite, audio de las sesiones, modelos, token MCP) viven en
 
 El servidor escucha en 127.0.0.1 y solo responde a peticiones cuyo `Host` sea `localhost`, `127.0.0.1` o `[::1]`. Para entrar desde el móvil a través de un túnel que ponga la aplicación delante (una red privada, un proxy inverso), indicad los nombres de host adicionales en `SCRIBE_ALLOWED_HOSTS`, separados por comas, exactos o `*.sufijo`: `SCRIBE_ALLOWED_HOSTS=mi-pc.example,*.ts.net`. El puerto y las mayúsculas no importan, y el `Origin` de las llamadas a la API también tiene que corresponder a uno de esos hosts (con cualquier esquema o puerto). Las peticiones *fetch* desde otras webs se siguen rechazando; abrir la aplicación desde otra página (un enlace, un bookmarklet, el menú de compartir) es una navegación normal y funciona.
 
+Una vez abierta a través del túnel, el navegador ofrece instalarla (PWA).
+
 La primera transcripción descarga el modelo (`small` por defecto, ~460 MB;
 `tiny` son ~75 MB) en `data\models`. Podéis lanzarla desde *Ajustes →
 Descargar ahora*.
