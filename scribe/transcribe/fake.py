@@ -44,4 +44,4 @@ class FakeTranscriber(Transcriber):
         return segments
 
     def info(self) -> dict:
-        return {"name": self.name, "model": "fake", "device": "cpu", "compute_type": "none", "loaded": True, "download": "ready"}
+        return {"name": self.name, "model": "fake", "device": "cpu", "compute_type": "none", "loaded": True, "download": "ready", "gpu_lease": "disabled"}

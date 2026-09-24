@@ -13,7 +13,13 @@ router = APIRouter(prefix="/api")
 
 @router.get("/health")
 def health(request: Request):
-    return {"service": SERVICE, "version": __version__, "dataDirConfigured": request.app.state.config.data_dir_configured}
+    transcriber_info = services(request).transcriber.info()
+    return {
+        "service": SERVICE,
+        "version": __version__,
+        "dataDirConfigured": request.app.state.config.data_dir_configured,
+        "gpu_lease": transcriber_info.get("gpu_lease", "disabled"),
+    }
 
 
 @router.get("/status")

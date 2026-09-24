@@ -97,6 +97,9 @@ Options: `--seconds`, `--model tiny`, `--device cpu|cuda`, `--transcriber fake`,
 | `SCRIBE_FAKE_FIXTURE` | WAV (or `mic.wav,system.wav`) streamed by the fake backend |
 | `SCRIBE_FAKE_SPEED` | playback speed of the fake backend (`0` = as fast as possible) |
 | `SCRIBE_URL`, `SCRIBE_TOKEN_FILE`, `SCRIBE_TOKEN` | used by `mcp_server.py` to reach the app |
+| `SCRIBE_GPU_LEASE` | `0` disables GPU memory leasing entirely (see [GPU leases](#gpu-leases)) |
+| `SCRIBE_WHISPER_VRAM_MB` | override the VRAM estimate (MB) requested for the whisper load, whatever the model size |
+| `SCRIBE_LEASE_TIMEOUT_S` | how long to wait for the lease before falling back to CPU for that job (default 120) |
 
 ### Access from your phone (behind a tunnel)
 
@@ -134,13 +137,39 @@ Once opened through the tunnel, the browser offers to install it (PWA).
    session whose final pass yields no text is `done` with the note
    "(sin voz detectada)" in the UI and in `scribe_sessions`.
 
+## GPU leases
+
+On a machine that also runs the LLM server or ComfyUI, loading whisper on
+the GPU at the same time can collide with what is already resident. Before
+loading the model on CUDA, Scribe asks the family's shared GPU-memory
+arbiter (Hoard Link, vendored at `scribe/hoard_link/`, the same library the
+other Hoard apps use to pick model servers) for room, sized by model:
+`tiny` 1024 MB, `base` 1536 MB, `small` 2048 MB, `medium` 5120 MB,
+`large`/`large-v3`/`turbo` 6144 MB — override with `SCRIBE_WHISPER_VRAM_MB`.
+
+The lease is held from the load through the first transcription (after
+that, the model is resident and `nvidia-smi` already shows its memory, so
+later transcriptions run without a lease). If the arbiter is not reachable
+at all — no hub running, `python -m hoard_link.hub` never started — the
+lease falls back to a local free-VRAM check plus a warning and proceeds
+anyway, exactly like Hoard Link does for every app. If the arbiter *is*
+reachable but the request is still queued after `SCRIBE_LEASE_TIMEOUT_S`
+seconds (default 120), Scribe falls back to CPU for that job rather than
+failing it, and logs why. `SCRIBE_GPU_LEASE=0` disables leasing entirely
+(CPU-only machines never request one either way, since the load only takes
+a lease when the device resolves to `cuda`).
+
+Current state (`waiting` | `granted` | `fallback_cpu` | `disabled`) is in
+`GET /api/health` as `gpu_lease` and in the `transcriber` object of
+`GET /api/status` and the `scribe_status` MCP tool.
+
 ## API
 
 All JSON, bound to `127.0.0.1` only, errors as `{ "error": "…" }`.
 
 | Route | Purpose |
 | --- | --- |
-| `GET /api/health` | `{ service: "scribe-hoard", version, dataDirConfigured }` (no auth) |
+| `GET /api/health` | `{ service: "scribe-hoard", version, dataDirConfigured, gpu_lease }` (no auth) |
 | `GET /api/status` | backend, devices, transcriber (model, device, download state), recording in progress (elapsed, levels), queue depth, storage |
 | `GET /api/devices` | microphones and loopback devices |
 | `GET/PUT /api/settings` | persisted settings (partial updates) |

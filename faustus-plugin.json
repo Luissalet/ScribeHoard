@@ -3,7 +3,7 @@
   "id": "scribe",
   "name": "Scribe's Hoard",
   "purpose": "Private recorder for meetings, interviews and voice notes: microphone and system audio captured as two tracks, transcribed locally with faster-whisper, searchable by text and time.",
-  "capabilities": ["recording", "two-track-capture", "system-loopback", "live-transcript", "local-transcription", "faster-whisper", "sessions", "full-text-search", "timestamps", "speaker-by-channel", "notes", "tags", "export-txt-srt-md", "import-audio"],
+  "capabilities": ["recording", "two-track-capture", "system-loopback", "live-transcript", "local-transcription", "faster-whisper", "sessions", "full-text-search", "timestamps", "speaker-by-channel", "notes", "tags", "export-txt-srt-md", "import-audio", "gpu-leases"],
   "placeholders": ["SCRIBE_DIR", "APP_URL", "TOKEN_FILE", "PYTHON"],
   "defaults": {
     "APP_URL": "http://127.0.0.1:5185",

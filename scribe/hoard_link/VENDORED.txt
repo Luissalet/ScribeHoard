@@ -1,0 +1,15 @@
+Vendored from HoardLink (https://github.com/Luissalet/HoardLink), version 0.3.0
+
+Do not edit; replace the whole folder with a byte-identical copy of that
+version to update. The `hub/` subpackage (the desktop launcher/server) is
+left out, same as Hypatia's Hoard: Scribe only needs the lease client
+(`lease.py`, `_hubclient.py`) to ask the hub for GPU memory before loading
+faster-whisper on CUDA.
+
+Scribe's Hoard talks to Hoard Link only through
+`scribe/transcribe/whisper.py`, which imports `scribe.hoard_link.lease.lease`
+to wrap the CUDA model load in a GPU memory lease, without editing any
+vendored file. When re-vendoring a later HoardLink version, drop in the new
+files here (minus `hub/`) and re-run `python -m pytest -q` to confirm the
+lease usage still lines up with the public API (`lease`, `LeaseTimeout`,
+`LeaseError`).

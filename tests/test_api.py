@@ -5,9 +5,15 @@ from conftest import wait_for
 
 def test_health_status_devices_settings(client):
     health = client.get("/api/health").json()
-    assert health == {"service": "scribe-hoard", "version": health["version"], "dataDirConfigured": True}
+    assert health == {
+        "service": "scribe-hoard",
+        "version": health["version"],
+        "dataDirConfigured": True,
+        "gpu_lease": "disabled",
+    }
     status = client.get("/api/status").json()
     assert status["backend"] == "fake" and status["recording"] is None and status["transcriber"]["name"] == "fake"
+    assert status["transcriber"]["gpu_lease"] == "disabled"
     assert status["settings"]["model_size"] == "small"
     devices = client.get("/api/devices").json()
     assert devices["mic"][0]["default"] and devices["system"][0]["kind"] == "system"

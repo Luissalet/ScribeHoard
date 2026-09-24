@@ -120,6 +120,32 @@ Opciones: `--seconds`, `--model tiny`, `--device cpu|cuda`, `--transcriber fake`
    sesión; una sesión sin texto termina «Lista» con la nota «(sin voz
    detectada)».
 
+## Alquileres de GPU (GPU leases)
+
+En un ordenador que también sirve el LLM o ComfyUI, cargar whisper en la
+GPU a la vez puede chocar con lo que ya hay cargado. Antes de cargar el
+modelo en CUDA, Scribe pide sitio al árbitro compartido de memoria de GPU
+de la familia (Hoard Link, incluido en `scribe/hoard_link/`, la misma
+biblioteca que usan las demás apps Hoard para elegir servidor de modelo),
+con una cantidad según el tamaño: `tiny` 1024 MB, `base` 1536 MB, `small`
+2048 MB, `medium` 5120 MB, `large`/`large-v3`/`turbo` 6144 MB — se puede
+ajustar con `SCRIBE_WHISPER_VRAM_MB`.
+
+El alquiler se mantiene durante la carga y la primera transcripción (a
+partir de ahí el modelo ya está cargado y `nvidia-smi` muestra su memoria,
+así que las siguientes transcripciones no piden alquiler). Si el árbitro no
+está accesible (no hay hub en marcha), el alquiler cae a una comprobación
+local de VRAM libre con un aviso y sigue adelante, igual que hace Hoard
+Link para cualquier app. Si el árbitro sí responde pero la petición sigue
+en cola tras `SCRIBE_LEASE_TIMEOUT_S` segundos (120 por defecto), Scribe
+pasa esa tarea a CPU en vez de fallar, y lo registra. `SCRIBE_GPU_LEASE=0`
+desactiva el alquiler por completo (en CPU nunca se pide, aunque esté
+activado).
+
+El estado (`waiting` | `granted` | `fallback_cpu` | `disabled`) aparece en
+`GET /api/health` como `gpu_lease` y en el objeto `transcriber` de
+`GET /api/status` y de la herramienta MCP `scribe_status`.
+
 ## MCP
 
 `mcp_server.py` es un servidor MCP por stdio que toma la lista de herramientas
