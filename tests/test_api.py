@@ -5,6 +5,8 @@ from conftest import wait_for
 
 def test_health_status_devices_settings(client):
     health = client.get("/api/health").json()
+    family_block = health.pop("hoard_link")
+    assert family_block["app"] == "scribe" and "events" in family_block
     assert health == {
         "service": "scribe-hoard",
         "version": health["version"],

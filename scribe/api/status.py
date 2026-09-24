@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request
 from .. import SERVICE, __version__
 from ..settings import SettingsPatch
 from .deps import services
+from ..hoard_link import family
 
 router = APIRouter(prefix="/api")
 
@@ -18,6 +19,7 @@ def health(request: Request):
         "service": SERVICE,
         "version": __version__,
         "dataDirConfigured": request.app.state.config.data_dir_configured,
+        "hoard_link": family.health_block(),
         "gpu_lease": transcriber_info.get("gpu_lease", "disabled"),
     }
 
